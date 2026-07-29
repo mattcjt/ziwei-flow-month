@@ -65,17 +65,24 @@
       }
 
       try {
-        // 計算時辰索引
         const timeIndex = getBirthTimeIndex(birthHour);
         
-        // 取得 iztro 物件
-        const astro = window.iztro ? (window.iztro.astro || window.iztro) : null;
-        if (!astro) {
-          throw new Error("套件載入中，請稍後再試或重新整理頁面。");
+        // 相容性判斷：尋找 iztro 的排盤函式
+        let astrolabeBySolar = null;
+        if (window.iztro) {
+          if (typeof window.iztro.astrolabeBySolar === 'function') {
+            astrolabeBySolar = window.iztro.astrolabeBySolar;
+          } else if (window.iztro.astro && typeof window.iztro.astro.astrolabeBySolar === 'function') {
+            astrolabeBySolar = window.iztro.astro.astrolabeBySolar;
+          }
+        }
+
+        if (!astrolabeBySolar) {
+          throw new Error("排盤函式載入失敗，請重新整理網頁後再試。");
         }
 
         // 本命排盤
-        const astrolabe = astro.astrolabeBySolar(birthDate, timeIndex, gender, true, 'zh-TW');
+        const astrolabe = astrolabeBySolar(birthDate, timeIndex, gender, true, 'zh-TW');
         
         // 取得運勢盤（流月）
         const horoscope = astrolabe.horoscope(targetDate);
