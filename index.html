@@ -4,13 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>紫微斗數流月查詢工具</title>
-  <!-- 雙 CDN 備援，確保套件能順利載入 -->
-  <script src="https://cdn.jsdelivr.net/npm/iztro/dist/iztro.min.js"></script>
-  <script>
-    if (!window.iztro) {
-      document.write('<script src="https://unpkg.com/iztro/dist/iztro.min.js"><\/script>');
-    }
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/iztro@2.0.5/dist/iztro.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; max-width: 500px; margin: 30px auto; padding: 0 15px; }
     .form-group { margin-bottom: 15px; }
@@ -57,15 +51,21 @@
       return Math.floor((hour + 1) / 2);
     }
 
-    // 尋找 iztro 的排盤函式
-    function getAstrolabeFunction() {
+    function findAstrolabeFn() {
       if (!window.iztro) return null;
       
-      const obj = window.iztro;
-      if (typeof obj.astrolabeBySolar === 'function') return obj.astrolabeBySolar.bind(obj);
-      if (obj.default && typeof obj.default.astrolabeBySolar === 'function') return obj.default.astrolabeBySolar.bind(obj.default);
-      if (obj.astro && typeof obj.astro.astrolabeBySolar === 'function') return obj.astro.astrolabeBySolar.bind(obj.astro);
-      
+      const targets = [
+        window.iztro.astro,
+        window.iztro.astro?.default,
+        window.iztro,
+        window.iztro.default
+      ];
+
+      for (const t of targets) {
+        if (!t) continue;
+        if (typeof t.astrolabeBySolar === 'function') return t.astrolabeBySolar.bind(t);
+        if (typeof t.bySolar === 'function') return t.bySolar.bind(t);
+      }
       return null;
     }
 
@@ -82,13 +82,13 @@
 
       try {
         if (!window.iztro) {
-          throw new Error("iztro 套件下載失敗。請檢查網路，或對此網站關閉廣告攔截器。");
+          throw new Error("iztro 套件未成功載入。");
         }
 
-        const astrolabeBySolar = getAstrolabeFunction();
+        const astrolabeBySolar = findAstrolabeFn();
         if (!astrolabeBySolar) {
-          const keys = Object.keys(window.iztro).join(', ');
-          throw new Error("找不到排盤屬性。目前 iztro 包含項目: " + keys);
+          const keys = window.iztro.astro ? Object.keys(window.iztro.astro).join(', ') : '無 astro';
+          throw new Error("iztro.astro 內部包含項目: " + keys);
         }
 
         const timeIndex = getBirthTimeIndex(birthHour);
