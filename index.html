@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>紫微斗數流月查詢工具</title>
+  <!-- 引進 iztro 開源紫微斗數排盤庫 -->
+  <script src="https://cdn.jsdelivr.net/npm/iztro@2.0.5/dist/iztro.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 500px; margin: 30px auto; padding: 0 15px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input, select, button { width: 100%; padding: 10px; font-size: 16px; box-sizing: border-box; }
+    button { background-color: #007bff; color: white; border: none; cursor: pointer; margin-top: 10px; }
+    button:hover { background-color: #0056b3; }
+    #result { margin-top: 20px; padding: 15px; border: 1px solid #ddd; background: #f9f9f9; white-space: pre-wrap; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h2>紫微斗數流月盤查詢</h2>
+
+  <div class="form-group">
+    <label>出生日期（西元國曆）</label>
+    <input type="date" id="birthDate" value="1992-01-22">
+  </div>
+
+  <div class="form-group">
+    <label>出生小時（0 到 23）</label>
+    <input type="number" id="birthHour" min="0" max="23" value="22">
+  </div>
+
+  <div class="form-group">
+    <label>性別</label>
+    <select id="gender">
+      <option value="male">男</option>
+      <option value="female">女</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>欲查詢的目標日期</label>
+    <input type="date" id="targetDate" value="2026-08-01">
+  </div>
+
+  <button onclick="calculateFlowMonth()">計算流月資料</button>
+
+  <div id="result">請輸入資料後點擊上方按鈕。</div>
+
+  <script>
+    function calculateFlowMonth() {
+      const birthDate = document.getElementById('birthDate').value;
+      const birthHour = parseInt(document.getElementById('birthHour').value, 10);
+      const gender = document.getElementById('gender').value;
+      const targetDate = document.getElementById('targetDate').value;
+
+      if (!birthDate || isNaN(birthHour) || !targetDate) {
+        alert('請填寫完整資訊');
+        return;
+      }
+
+      try {
+        // 呼叫 iztro 進行本命排盤
+        const astrolabe = iztro.astro.astrolabeBySolar(birthDate, birthHour, gender, true, 'zh-TW');
+        // 取得目標日期的流年與流月資料
+        const horoscope = astrolabe.horoscope(targetDate, 0);
+        const monthlyData = horoscope.monthly;
+
+        // 組裝輸出內容
+        let output = `=== 流月盤核心資訊 ===\n`;
+        output += `農曆月份：${monthlyData.lunarMonth} 月\n`;
+        output += `流月天干地支：${monthlyData.heavenlyStem}${monthlyData.earthlyBranch}\n`;
+        output += `流月命宮地支位置：${monthlyData.palace().earthlyBranch}\n\n`;
+        output += `=== 流月四化 ===\n`;
+        output += `化祿：${monthlyData.mutagen.lu}\n`;
+        output += `化權：${monthlyData.mutagen.quan}\n`;
+        output += `化科：${monthlyData.mutagen.ke}\n`;
+        output += `化忌：${monthlyData.mutagen.ji}\n`;
+
+        document.getElementById('result').textContent = output;
+      } catch (error) {
+        document.getElementById('result').textContent = '計算失敗，請確認日期格式是否正確。';
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>
