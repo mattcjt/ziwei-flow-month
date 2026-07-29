@@ -47,6 +47,12 @@
   <div id="result">請輸入資料後點擊上方按鈕。</div>
 
   <script>
+    // 將 24 小時制轉為 iztro 時辰索引 (0 ~ 12)
+    function getBirthTimeIndex(hour) {
+      if (hour === 23) return 12; // 晚子時
+      return Math.floor((hour + 1) / 2);
+    }
+
     function calculateFlowMonth() {
       const birthDate = document.getElementById('birthDate').value;
       const birthHour = parseInt(document.getElementById('birthHour').value, 10);
@@ -59,18 +65,34 @@
       }
 
       try {
-        // 呼叫 iztro 進行本命排盤
-        const astrolabe = iztro.astro.astrolabeBySolar(birthDate, birthHour, gender, true, 'zh-TW');
-        // 取得目標日期的流年與流月資料
-        const horoscope = astrolabe.horoscope(targetDate, 0);
+        // 計算時辰索引
+        const timeIndex = getBirthTimeIndex(birthHour);
+        
+        // 取得 iztro 物件
+        const astro = window.iztro ? (window.iztro.astro || window.iztro) : null;
+        if (!astro) {
+          throw new Error("套件載入中，請稍後再試或重新整理頁面。");
+        }
+
+        // 本命排盤
+        const astrolabe = astro.astrolabeBySolar(birthDate, timeIndex, gender, true, 'zh-TW');
+        
+        // 取得運勢盤（流月）
+        const horoscope = astrolabe.horoscope(targetDate);
         const monthlyData = horoscope.monthly;
+
+        // 取得宮位資訊
+        const palaceInfo = typeof monthlyData.palace === 'function' ? monthlyData.palace() : monthlyData.palace;
 
         // 組裝輸出內容
         let output = `=== 流月盤核心資訊 ===\n`;
-        output += `農曆月份：${monthlyData.lunarMonth} 月\n`;
+        output += `農曆月份：${monthlyData.lunarMonth}\n`;
         output += `流月天干地支：${monthlyData.heavenlyStem}${monthlyData.earthlyBranch}\n`;
-        output += `流月命宮地支位置：${monthlyData.palace().earthlyBranch}\n\n`;
-        output += `=== 流月四化 ===\n`;
+        if (palaceInfo) {
+          output += `流月命宮地支：${palaceInfo.earthlyBranch}\n`;
+          output += `重疊本命宮位：${palaceInfo.name}\n`;
+        }
+        output += `\n=== 流月四化 ===\n`;
         output += `化祿：${monthlyData.mutagen.lu}\n`;
         output += `化權：${monthlyData.mutagen.quan}\n`;
         output += `化科：${monthlyData.mutagen.ke}\n`;
@@ -78,7 +100,7 @@
 
         document.getElementById('result').textContent = output;
       } catch (error) {
-        document.getElementById('result').textContent = '計算失敗，請確認日期格式是否正確。';
+        document.getElementById('result').textContent = '計算失敗：' + error.message;
         console.error(error);
       }
     }
