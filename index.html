@@ -3,120 +3,243 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>紫微斗數流月查詢工具</title>
+  <title>紫微斗數流月排盤工具</title>
+  <!-- 引進 iztro 開源紫微斗數套件 -->
   <script src="https://cdn.jsdelivr.net/npm/iztro@2.0.5/dist/iztro.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 500px; margin: 30px auto; padding: 0 15px; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; }
-    input, select, button { width: 100%; padding: 10px; font-size: 16px; box-sizing: border-box; }
-    button { background-color: #007bff; color: white; border: none; cursor: pointer; margin-top: 10px; }
-    button:hover { background-color: #0056b3; }
-    #result { margin-top: 20px; padding: 15px; border: 1px solid #ddd; background: #f9f9f9; white-space: pre-wrap; font-family: monospace; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background-color: #121212; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+    h2 { margin-bottom: 15px; color: #fff; font-size: 20px; }
+    
+    /* 控制面板 */
+    .control-panel { background-color: #1e1e1e; border: 1px solid #333; padding: 15px; border-radius: 8px; width: 100%; max-width: 900px; margin-bottom: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-size: 12px; color: #aaa; margin-bottom: 4px; }
+    .form-group input, .form-group select { padding: 8px; background-color: #2a2a2a; border: 1px solid #444; color: #fff; border-radius: 4px; font-size: 14px; }
+    .btn-submit { grid-column: 1 / -1; padding: 10px; background-color: #0d6efd; color: white; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+    .btn-submit:hover { background-color: #0b5ed7; }
+
+    /* 十二宮棋盤布局 */
+    .astrolabe-grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 2px; width: 100%; max-width: 900px; height: 850px; background-color: #333; border: 2px solid #444; border-radius: 6px; overflow: hidden; }
+    .palace-box { background-color: #181818; padding: 6px; display: flex; flex-direction: column; justify-content: space-between; position: relative; font-size: 12px; overflow: hidden; }
+    .palace-box.active-month { border: 2px solid #ff4d4f; background-color: #221515; }
+
+    /* 星曜顯示區域 */
+    .stars-header { display: flex; flex-wrap: wrap; gap: 4px; min-height: 40px; }
+    .major-star { font-weight: bold; font-size: 13px; color: #ffd700; display: inline-flex; align-items: center; }
+    .star-brightness { font-size: 10px; color: #aaa; margin-left: 1px; font-weight: normal; }
+    .minor-stars { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; color: #88c0d0; font-size: 11px; }
+
+    /* 四化標籤 */
+    .badge-mutagen { display: inline-block; padding: 1px 3px; border-radius: 3px; font-size: 10px; color: white; font-weight: bold; margin-left: 2px; }
+    .badge-lu { background-color: #2e7d32; }
+    .badge-quan { background-color: #7b1fa2; }
+    .badge-ke { background-color: #0288d1; }
+    .badge-ji { background-color: #c62828; }
+
+    /* 宮位底部資訊 */
+    .palace-footer { border-top: 1px solid #2a2a2a; pt: 4px; display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; }
+    .palace-name { font-weight: bold; color: #fff; font-size: 13px; }
+    .palace-stem-branch { color: #888; font-size: 11px; }
+    .palace-ages { color: #555; font-size: 10px; }
+    .month-tag { font-size: 10px; background-color: #c62828; color: #fff; padding: 1px 3px; border-radius: 2px; }
+
+    /* 中宮區域 */
+    .center-box { grid-column: 2 / 4; grid-row: 2 / 4; background-color: #121212; padding: 15px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border: 1px dashed #444; }
+    .center-title { font-size: 18px; font-weight: bold; color: #ffd700; margin-bottom: 10px; }
+    .center-info { font-size: 13px; color: #ccc; line-height: 1.6; }
+    .month-summary { margin-top: 10px; padding: 8px; background-color: #1e1e1e; border: 1px solid #333; border-radius: 4px; width: 100%; font-size: 12px; }
   </style>
 </head>
 <body>
-  <h2>紫微斗數流月盤查詢</h2>
 
-  <div class="form-group">
-    <label>出生日期（西元國曆）</label>
-    <input type="date" id="birthDate" value="1992-01-22">
+  <h2>紫微斗數命盤與流月查詢</h2>
+
+  <div class="control-panel">
+    <div class="form-group">
+      <label>出生西元日期</label>
+      <input type="date" id="birthDate" value="1992-01-22">
+    </div>
+    <div class="form-group">
+      <label>出生小時 (0-23)</label>
+      <input type="number" id="birthHour" min="0" max="23" value="22">
+    </div>
+    <div class="form-group">
+      <label>性別</label>
+      <select id="gender">
+        <option value="male">男</option>
+        <option value="female">女</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>查詢目標日期（算流月）</label>
+      <input type="date" id="targetDate" value="2026-08-01">
+    </div>
+    <button class="btn-submit" onclick="renderChart()">排盤並計算流月</button>
   </div>
 
-  <div class="form-group">
-    <label>出生小時（0 到 23）</label>
-    <input type="number" id="birthHour" min="0" max="23" value="22">
+  <div class="astrolabe-grid" id="grid">
+    <!-- 中宮資訊區 -->
+    <div class="center-box" id="centerBox">
+      <div class="center-title">文墨風格紫微盤</div>
+      <div class="center-info">請填寫上方資料並點擊「排盤」按鈕</div>
+    </div>
   </div>
-
-  <div class="form-group">
-    <label>性別</label>
-    <select id="gender">
-      <option value="male">男</option>
-      <option value="female">女</option>
-    </select>
-  </div>
-
-  <div class="form-group">
-    <label>欲查詢的目標日期</label>
-    <input type="date" id="targetDate" value="2026-08-01">
-  </div>
-
-  <button onclick="calculateFlowMonth()">計算流月資料</button>
-
-  <div id="result">請輸入資料後點擊上方按鈕。</div>
 
   <script>
+    // 天干四化對照表
+    const mutagenMap = {
+      '甲': { '廉貞': '祿', '破軍': '權', '武曲': '科', '太陽': '忌' },
+      '乙': { '天機': '祿', '天梁': '權', '紫微': '科', '太陰': '忌' },
+      '丙': { '天同': '祿', '天機': '權', '文昌': '科', '廉貞': '忌' },
+      '丁': { '太陰': '祿', '天同': '權', '天機': '科', '巨門': '忌' },
+      '戊': { '貪狼': '祿', '太陰': '權', '右弼': '科', '天機': '忌' },
+      '己': { '武曲': '祿', '貪狼': '權', '天梁': '科', '文曲': '忌' },
+      '庚': { '太陽': '祿', '武曲': '權', '太陰': '科', '天同': '忌' },
+      '辛': { '巨門': '祿', '太陽': '權', '文曲': '科', '文昌': '忌' },
+      '壬': { '天梁': '祿', '紫微': '權', '左輔': '科', '武曲': '忌' },
+      '癸': { '破軍': '祿', '巨門': '權', '太陰': '科', '貪狼': '忌' }
+    };
+
+    // 地支對應 CSS Grid 網格位置
+    const branchGridMap = {
+      '巳': { r: 1, c: 1 }, '午': { r: 1, c: 2 }, '未': { r: 1, c: 3 }, '申': { r: 1, c: 4 },
+      '辰': { r: 2, c: 1 },                                           '酉': { r: 2, c: 4 },
+      '卯': { r: 3, c: 1 },                                           '戌': { r: 3, c: 4 },
+      '寅': { r: 4, c: 1 }, '子': { r: 4, c: 3 }, '丑': { r: 4, c: 2 }, '亥': { r: 4, c: 4 }
+    };
+
     function getBirthTimeIndex(hour) {
       if (hour === 23) return 12;
       return Math.floor((hour + 1) / 2);
     }
 
-    function findAstrolabeFn() {
+    function getAstrolabeFn() {
       if (!window.iztro) return null;
-      
-      const targets = [
-        window.iztro.astro,
-        window.iztro.astro?.default,
-        window.iztro,
-        window.iztro.default
-      ];
-
-      for (const t of targets) {
-        if (!t) continue;
-        if (typeof t.astrolabeBySolar === 'function') return t.astrolabeBySolar.bind(t);
-        if (typeof t.bySolar === 'function') return t.bySolar.bind(t);
-      }
+      const t = window.iztro;
+      if (typeof t.astrolabeBySolar === 'function') return t.astrolabeBySolar.bind(t);
+      if (t.astro && typeof t.astro.astrolabeBySolar === 'function') return t.astro.astrolabeBySolar.bind(t.astro);
+      if (t.default && typeof t.default.astrolabeBySolar === 'function') return t.default.astrolabeBySolar.bind(t.default);
       return null;
     }
 
-    function calculateFlowMonth() {
+    function renderChart() {
       const birthDate = document.getElementById('birthDate').value;
       const birthHour = parseInt(document.getElementById('birthHour').value, 10);
       const gender = document.getElementById('gender').value;
       const targetDate = document.getElementById('targetDate').value;
 
-      if (!birthDate || isNaN(birthHour) || !targetDate) {
-        alert('請填寫完整資訊');
+      const fn = getAstrolabeFn();
+      if (!fn) {
+        alert('排盤套件尚未載入完成，請稍後再試');
         return;
       }
 
       try {
-        if (!window.iztro) {
-          throw new Error("iztro 套件未成功載入。");
-        }
-
-        const astrolabeBySolar = findAstrolabeFn();
-        if (!astrolabeBySolar) {
-          const keys = window.iztro.astro ? Object.keys(window.iztro.astro).join(', ') : '無 astro';
-          throw new Error("iztro.astro 內部包含項目: " + keys);
-        }
-
         const timeIndex = getBirthTimeIndex(birthHour);
-        const astrolabe = astrolabeBySolar(birthDate, timeIndex, gender, true, 'zh-TW');
+        const astrolabe = fn(birthDate, timeIndex, gender, true, 'zh-TW');
         const horoscope = astrolabe.horoscope(targetDate);
-        const monthlyData = horoscope.monthly;
+        const monthly = horoscope.monthly;
 
-        const palaceInfo = typeof monthlyData.palace === 'function' ? monthlyData.palace() : monthlyData.palace;
+        // 流月命宮地支與流月天干
+        const monthBranch = monthly.earthlyBranch;
+        const monthStem = monthly.heavenlyStem;
+        const monthMutagens = mutagenMap[monthStem] || {};
 
-        let output = "=== 流月盤核心資訊 ===\n";
-        output += "農曆月份：" + monthlyData.lunarMonth + "\n";
-        output += "流月天干地支：" + monthlyData.heavenlyStem + monthlyData.earthlyBranch + "\n";
-        if (palaceInfo) {
-          output += "流月命宮地支：" + palaceInfo.earthlyBranch + "\n";
-          output += "重疊本命宮位：" + palaceInfo.name + "\n";
-        }
-        output += "\n=== 流月四化 ===\n";
-        output += "化祿：" + monthlyData.mutagen.lu + "\n";
-        output += "化權：" + monthlyData.mutagen.quan + "\n";
-        output += "化科：" + monthlyData.mutagen.ke + "\n";
-        output += "化忌：" + monthlyData.mutagen.ji + "\n";
+        // 清空並重新生成宮位
+        const grid = document.getElementById('grid');
+        grid.querySelectorAll('.palace-box').forEach(el => el.remove());
 
-        document.getElementById('result').textContent = output;
-      } catch (error) {
-        document.getElementById('result').textContent = '計算失敗：' + error.message;
-        console.error(error);
+        // 繪製 12 宮
+        astrolabe.palaces.forEach(palace => {
+          const branch = palace.earthlyBranch;
+          const pos = branchGridMap[branch];
+          if (!pos) return;
+
+          const isFlowMonthLife = (branch === monthBranch);
+
+          const box = document.createElement('div');
+          box.className = 'palace-box' + (isFlowMonthLife ? ' active-month' : '');
+          box.style.gridRow = pos.r;
+          box.style.gridColumn = pos.c;
+
+          // 主星 HTML
+          let majorHtml = '';
+          (palace.majorStars || []).forEach(star => {
+            let mutagenBadge = '';
+            // 流月四化標籤
+            if (monthMutagens[star.name]) {
+              const type = monthMutagens[star.name];
+              const cssClass = type === '祿' ? 'badge-lu' : type === '權' ? 'badge-quan' : type === '科' ? 'badge-ke' : 'badge-ji';
+              mutagenBadge = `<span class="badge-mutagen ${cssClass}">月${type}</span>`;
+            }
+            majorHtml += `<div class="major-star">${star.name}<span class="star-brightness">${star.brightness || ''}</span>${mutagenBadge}</div>`;
+          });
+
+          // 輔星 HTML
+          let minorHtml = '';
+          (palace.minorStars || []).forEach(star => {
+            minorHtml += `<span>${star.name}</span>`;
+          });
+
+          // 宮位底部資訊
+          const decadalRange = palace.decadal ? `${palace.decadal.range[0]}~${palace.decadal.range[1]}` : '';
+          const monthTag = isFlowMonthLife ? `<span class="month-tag">流月命宮</span>` : '';
+
+          box.innerHTML = `
+            <div>
+              <div class="stars-header">${majorHtml}</div>
+              <div class="minor-stars">${minorHtml}</div>
+            </div>
+            <div class="palace-footer">
+              <div>
+                <div class="palace-name">${palace.name} ${monthTag}</div>
+                <div class="palace-ages">${decadalRange} 歲</div>
+              </div>
+              <div class="palace-stem-branch">${palace.heavenlyStem}${palace.earthlyBranch}</div>
+            </div>
+          `;
+
+          grid.appendChild(box);
+        });
+
+        // 更新中宮資訊
+        const centerBox = document.getElementById('centerBox');
+        centerBox.innerHTML = `
+          <div class="center-title">紫微斗數命盤</div>
+          <div class="center-info">
+            <p>農曆：${astrolabe.lunarDate}</p>
+            <p>局數：${astrolabe.fiveElementsClass}</p>
+            <p>命主：${astrolabe.soul} | 身主：${astrolabe.body}</p>
+          </div>
+          <div class="month-summary">
+            <strong>【目標日期流月資訊】</strong><br>
+            流月天干地支：<span style="color:#ffd700;">${monthStem}${monthBranch}</span><br>
+            流月四化：
+            <span style="color:#4caf50;">祿-${getStarByMutagen(monthMutagens, '祿')}</span> |
+            <span style="color:#ab47bc;">權-${getStarByMutagen(monthMutagens, '權')}</span> |
+            <span style="color:#29b6f6;">科-${getStarByMutagen(monthMutagens, '科')}</span> |
+            <span style="color:#ef5350;">忌-${getStarByMutagen(monthMutagens, '忌')}</span>
+          </div>
+        `;
+
+      } catch (err) {
+        alert('計算出錯：' + err.message);
+        console.error(err);
       }
     }
+
+    function getStarByMutagen(map, type) {
+      for (let star in map) {
+        if (map[star] === type) return star;
+      }
+      return '無';
+    }
+
+    // 頁面載入時自動執行一次預設排盤
+    window.onload = function() {
+      setTimeout(renderChart, 500);
+    };
   </script>
 </body>
 </html>
