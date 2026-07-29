@@ -4,8 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>紫微斗數流月查詢工具</title>
-  <!-- 引進 iztro 開源紫微斗數排盤庫 -->
-  <script src="https://cdn.jsdelivr.net/npm/iztro@2.0.5/dist/iztro.min.js"></script>
+  <!-- 雙 CDN 備援，確保套件能順利載入 -->
+  <script src="https://cdn.jsdelivr.net/npm/iztro/dist/iztro.min.js"></script>
+  <script>
+    if (!window.iztro) {
+      document.write('<script src="https://unpkg.com/iztro/dist/iztro.min.js"><\/script>');
+    }
+  </script>
   <style>
     body { font-family: Arial, sans-serif; max-width: 500px; margin: 30px auto; padding: 0 15px; }
     .form-group { margin-bottom: 15px; }
@@ -47,10 +52,21 @@
   <div id="result">請輸入資料後點擊上方按鈕。</div>
 
   <script>
-    // 將 24 小時制轉為 iztro 時辰索引 (0 ~ 12)
     function getBirthTimeIndex(hour) {
-      if (hour === 23) return 12; // 晚子時
+      if (hour === 23) return 12;
       return Math.floor((hour + 1) / 2);
+    }
+
+    // 尋找 iztro 的排盤函式
+    function getAstrolabeFunction() {
+      if (!window.iztro) return null;
+      
+      const obj = window.iztro;
+      if (typeof obj.astrolabeBySolar === 'function') return obj.astrolabeBySolar.bind(obj);
+      if (obj.default && typeof obj.default.astrolabeBySolar === 'function') return obj.default.astrolabeBySolar.bind(obj.default);
+      if (obj.astro && typeof obj.astro.astrolabeBySolar === 'function') return obj.astro.astrolabeBySolar.bind(obj.astro);
+      
+      return null;
     }
 
     function calculateFlowMonth() {
@@ -65,45 +81,35 @@
       }
 
       try {
-        const timeIndex = getBirthTimeIndex(birthHour);
-        
-        // 相容性判斷：尋找 iztro 的排盤函式
-        let astrolabeBySolar = null;
-        if (window.iztro) {
-          if (typeof window.iztro.astrolabeBySolar === 'function') {
-            astrolabeBySolar = window.iztro.astrolabeBySolar;
-          } else if (window.iztro.astro && typeof window.iztro.astro.astrolabeBySolar === 'function') {
-            astrolabeBySolar = window.iztro.astro.astrolabeBySolar;
-          }
+        if (!window.iztro) {
+          throw new Error("iztro 套件下載失敗。請檢查網路，或對此網站關閉廣告攔截器。");
         }
 
+        const astrolabeBySolar = getAstrolabeFunction();
         if (!astrolabeBySolar) {
-          throw new Error("排盤函式載入失敗，請重新整理網頁後再試。");
+          const keys = Object.keys(window.iztro).join(', ');
+          throw new Error("找不到排盤屬性。目前 iztro 包含項目: " + keys);
         }
 
-        // 本命排盤
+        const timeIndex = getBirthTimeIndex(birthHour);
         const astrolabe = astrolabeBySolar(birthDate, timeIndex, gender, true, 'zh-TW');
-        
-        // 取得運勢盤（流月）
         const horoscope = astrolabe.horoscope(targetDate);
         const monthlyData = horoscope.monthly;
 
-        // 取得宮位資訊
         const palaceInfo = typeof monthlyData.palace === 'function' ? monthlyData.palace() : monthlyData.palace;
 
-        // 組裝輸出內容
-        let output = `=== 流月盤核心資訊 ===\n`;
-        output += `農曆月份：${monthlyData.lunarMonth}\n`;
-        output += `流月天干地支：${monthlyData.heavenlyStem}${monthlyData.earthlyBranch}\n`;
+        let output = "=== 流月盤核心資訊 ===\n";
+        output += "農曆月份：" + monthlyData.lunarMonth + "\n";
+        output += "流月天干地支：" + monthlyData.heavenlyStem + monthlyData.earthlyBranch + "\n";
         if (palaceInfo) {
-          output += `流月命宮地支：${palaceInfo.earthlyBranch}\n`;
-          output += `重疊本命宮位：${palaceInfo.name}\n`;
+          output += "流月命宮地支：" + palaceInfo.earthlyBranch + "\n";
+          output += "重疊本命宮位：" + palaceInfo.name + "\n";
         }
-        output += `\n=== 流月四化 ===\n`;
-        output += `化祿：${monthlyData.mutagen.lu}\n`;
-        output += `化權：${monthlyData.mutagen.quan}\n`;
-        output += `化科：${monthlyData.mutagen.ke}\n`;
-        output += `化忌：${monthlyData.mutagen.ji}\n`;
+        output += "\n=== 流月四化 ===\n";
+        output += "化祿：" + monthlyData.mutagen.lu + "\n";
+        output += "化權：" + monthlyData.mutagen.quan + "\n";
+        output += "化科：" + monthlyData.mutagen.ke + "\n";
+        output += "化忌：" + monthlyData.mutagen.ji + "\n";
 
         document.getElementById('result').textContent = output;
       } catch (error) {
